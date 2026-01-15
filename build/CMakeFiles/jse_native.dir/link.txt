@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -DBUILDING_NODE_EXTENSION -O3 -DNDEBUG -shared -Wl,-soname,jse_native.node -o Release/jse_native.node CMakeFiles/jse_native.dir/jse_native.cc.o 
