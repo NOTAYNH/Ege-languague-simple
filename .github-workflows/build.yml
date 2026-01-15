@@ -1,0 +1,33 @@
+name: Windows_Build
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Codespace'ten gelen o lanet Linux build klasörünü siliyoruz
+      - name: Clean build folder
+        run: |
+          if (Test-Path build) { Remove-Item -Recurse -Force build }
+        shell: powershell
+
+      - name: Install dependencies
+        run: npm install
+
+      # --clean parametresi ile her şeyi Windows'a göre sıfırdan kuruyoruz
+      - name: Build Native Module
+        run: npx cmake-js build --generator="Visual Studio 17 2022" --clean
+
+      - name: Upload Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: jse-binary-windows
+          path: build/Release/jse_native.node
