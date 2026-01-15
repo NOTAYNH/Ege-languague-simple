@@ -1,43 +1,43 @@
 #include <napi.h>
 #include <string>
 
+// İleri tanımlama
 std::string RenderElement(Napi::Value val, double startedAt);
 
 std::string ProcessValue(Napi::Value val, double startedAt) {
     if (val.IsString() || val.IsNumber()) {
         return val.ToString().Utf8Value();
     }
+    
     if (val.IsObject()) {
         Napi::Object obj = val.ToObject();
-        // EĞER OBJENİN İÇİNDE "element" DİZİSİ VARSA (Senin Element sınıfın gibi)
+        // 1. Eğer bu senin Element class'ınsa, içindeki .element'i al
         if (obj.Has("element")) {
             return RenderElement(obj.Get("element"), startedAt);
         }
-        // Eğer bu düz bir array ise zaten RenderElement onu halleder
+        // 2. Eğer bu zaten bir array ise direkt işle
         if (val.IsArray()) {
             return RenderElement(val, startedAt);
         }
     }
     return "";
 }
+
 std::string RenderElement(Napi::Value val, double startedAt) {
     Napi::Env env = val.Env();
-    Napi::Array elementArray;
-
-    // Element nesnesi mi yoksa ham dizi mi kontrolü
-    if (val.IsObject() && val.ToObject().Has("element")) {
-        elementArray = val.ToObject().Get("element").As<Napi::Array>();
-    } else if (val.IsArray()) {
-        elementArray = val.As<Napi::Array>();
-    } else {
-        return val.IsString() ? val.ToString().Utf8Value() : "";
+    
+    // Gelen verinin kesinlikle bir dizi olduğundan emin olalım
+    if (!val.IsArray()) {
+        return ProcessValue(val, startedAt);
     }
 
+    Napi::Array elementArray = val.As<Napi::Array>();
     if (elementArray.Length() < 1) return "";
 
-    std::string tag = elementArray.Get(uint32_t(0)).ToString().Utf8Value();
+    Napi::Value v0 = elementArray.Get(uint32_t(0));
+    std::string tag = v0.ToString().Utf8Value();
 
-    // Özel Etiketler (Tag-based logic)
+    // Özel etiketler
     if (tag == "--render" || tag == "pack") {
         if (elementArray.Length() >= 3) {
             return ProcessValue(elementArray.Get(uint32_t(2)), startedAt);
@@ -46,14 +46,13 @@ std::string RenderElement(Napi::Value val, double startedAt) {
     }
 
     if (tag == "--render-time") {
-        // Zamanı C++ içinde hesaplamak yerine JS tarafındaki StartedAt'i kullanabiliriz
         return "Rendered."; 
     }
 
-    // Normal HTML Etiketi Başlangıcı
+    // HTML oluşturma
     std::string html = "<" + tag;
 
-    // Özellikleri (Attributes) ekle
+    // Özellikler (Attributes) - İndis 1
     if (elementArray.Length() >= 2) {
         Napi::Value propsVal = elementArray.Get(uint32_t(1));
         if (propsVal.IsObject() && !propsVal.IsArray()) {
@@ -68,7 +67,7 @@ std::string RenderElement(Napi::Value val, double startedAt) {
     }
     html += ">";
 
-    // Çocukları (Children) ekle
+    // Çocuklar (Children) - İndis 2
     if (elementArray.Length() >= 3) {
         Napi::Value children = elementArray.Get(uint32_t(2));
         if (children.IsArray()) {
@@ -84,21 +83,3 @@ std::string RenderElement(Napi::Value val, double startedAt) {
     html += "</" + tag + ">";
     return html;
 }
-
-Napi::String FastRender(const Napi::CallbackInfo& info) {
-    Napi::Env env = info.Env();
-    double startedAt = 0;
-    if (info.Length() > 1 && info[1].IsNumber()) {
-        startedAt = info[1].As<Napi::Number>().DoubleValue();
-    }
-    
-    std::string result = RenderElement(info[0], startedAt);
-    return Napi::String::New(env, result);
-}
-
-Napi::Object Init(Napi::Env env, Napi::Object exports) {
-    exports.Set("render", Napi::Function::New(env, FastRender));
-    return exports;
-}
-
-NODE_API_MODULE(jse_native, Init)
