@@ -13,7 +13,7 @@ jobs:
         with:
           node-version: 24
 
-      # Codespace'ten gelen o lanet Linux build klasörünü siliyoruz
+      # Codespaces'ten gelen o hatalı build klasörünü kökten siliyoruz
       - name: Clean build folder
         run: |
           if (Test-Path build) { Remove-Item -Recurse -Force build }
