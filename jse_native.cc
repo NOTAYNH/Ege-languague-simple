@@ -3,17 +3,23 @@
 
 std::string RenderElement(Napi::Value val, double startedAt);
 
-// Yardımcı: Değerleri stringe çevirir veya nesneyi render eder
 std::string ProcessValue(Napi::Value val, double startedAt) {
     if (val.IsString() || val.IsNumber()) {
         return val.ToString().Utf8Value();
     }
     if (val.IsObject()) {
-        return RenderElement(val, startedAt);
+        Napi::Object obj = val.ToObject();
+        // EĞER OBJENİN İÇİNDE "element" DİZİSİ VARSA (Senin Element sınıfın gibi)
+        if (obj.Has("element")) {
+            return RenderElement(obj.Get("element"), startedAt);
+        }
+        // Eğer bu düz bir array ise zaten RenderElement onu halleder
+        if (val.IsArray()) {
+            return RenderElement(val, startedAt);
+        }
     }
     return "";
 }
-
 std::string RenderElement(Napi::Value val, double startedAt) {
     Napi::Env env = val.Env();
     Napi::Array elementArray;
